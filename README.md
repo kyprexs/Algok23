@@ -3,7 +3,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-supported-brightgreen.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-21%20passing-green.svg)](./tests/)
+[![Tests](https://img.shields.io/badge/tests-44%20passing-green.svg)](./tests/)
 
 AgloK23 is a state-of-the-art algorithmic trading system designed for high-frequency trading with advanced machine learning capabilities, alternative data integration, and ultra-low latency execution.
 
@@ -268,11 +268,19 @@ python -m src.main
 - **Performance Benchmarks**: Sub-5ms inference latency
 - **Model Validation**: Cross-validation with financial time series
 
-### **Phase 3 - Execution & Risk** 🚧 **IN PROGRESS**
-- **Smart Order Routing**: Multi-venue execution optimization
-- **Execution Algorithms**: VWAP, TWAP, POV, Implementation Shortfall
-- **Real-time Risk Management**: Pre-trade and intraday risk controls
-- **Position Management**: Real-time PnL tracking and portfolio optimization
+### **Phase 3 - Execution & Risk** ✅ **MAJOR PROGRESS**
+- **Smart Order Routing**: Multi-venue execution optimization ✅
+- **Execution Algorithms**: VWAP, TWAP, POV, Implementation Shortfall ✅
+- **Real-time Risk Management**: Pre-trade and intraday risk controls ✅
+- **Position Management**: Real-time PnL tracking and portfolio optimization ✅
+- **Portfolio Analytics Dashboard**: Comprehensive analytics with performance metrics ✅
+
+### **Phase 4 - Analytics & Monitoring** ✅ **COMPLETE**
+- **Portfolio Analytics Dashboard**: Real-time performance metrics and risk analytics
+- **Risk Monitoring System**: VaR, correlation risk, and liquidity assessment
+- **Attribution Analysis**: Factor-based performance attribution
+- **Execution Analytics**: Comprehensive trade execution analysis
+- **Comprehensive Test Coverage**: 23+ tests for analytics dashboard
 
 ## 🚀 **Quick Start**
 
@@ -358,6 +366,67 @@ python -m pytest tests/test_backtesting.py -v
 - A/B testing framework for model comparison
 - Feature importance analysis with SHAP
 - ONNX export for production inference
+
+## 📊 **Portfolio Analytics Dashboard**
+
+Comprehensive real-time analytics system providing deep insights into portfolio performance, risk metrics, and execution quality.
+
+### **Performance Analytics**
+- **Real-time Performance Tracking**: Live PnL, returns, and performance attribution
+- **Historical Performance Analysis**: Multi-timeframe performance with drawdown analysis
+- **Benchmark Comparison**: Track performance vs SPY, QQQ, and custom benchmarks
+- **Sharpe Ratio Calculation**: Risk-adjusted performance metrics with volatility analysis
+
+### **Risk Analytics**
+- **Value at Risk (VaR)**: Historical and parametric VaR calculations at multiple confidence levels
+- **Correlation Risk Analysis**: Real-time correlation matrices and risk concentration metrics
+- **Liquidity Risk Assessment**: Position-level liquidity scoring and market impact analysis
+- **Maximum Drawdown Tracking**: Real-time drawdown monitoring with alert thresholds
+
+### **Position Analytics**
+- **Real-time Position Tracking**: Live position values, weights, and P&L attribution
+- **Sector Exposure Analysis**: Dynamic sector allocation and concentration limits
+- **Currency Exposure Tracking**: Multi-currency position risk and hedging analysis
+- **Concentration Risk Monitoring**: Single-name and sector concentration alerts
+
+### **Attribution Analysis**
+- **Factor Attribution**: Systematic performance breakdown by risk factors
+- **Sector Attribution**: Performance attribution by sector and industry groups
+- **Alpha/Beta Decomposition**: Separate skill-based returns from market exposure
+- **Transaction Cost Analysis**: Impact of trading costs on performance
+
+### **Execution Analytics**
+- **Trade Execution Quality**: Slippage analysis, market impact, and timing metrics
+- **Order Flow Analysis**: Fill rate, partial fills, and execution venue performance
+- **Cost Analysis**: Comprehensive transaction cost breakdown and optimization
+- **Latency Monitoring**: End-to-end execution latency tracking and alerts
+
+### **Dashboard Features**
+- **Interactive Charts**: Real-time performance charts with customizable timeframes
+- **Risk Dashboards**: Visual risk breakdown with heat maps and correlation matrices
+- **Alert System**: Configurable alerts for risk breaches and performance anomalies
+- **Export Capabilities**: PDF/Excel report generation for compliance and analysis
+- **Caching System**: Redis-powered caching for sub-second dashboard updates
+
+```python
+# Example: Initialize Portfolio Analytics Dashboard
+from src.analytics.portfolio_dashboard import PortfolioAnalyticsDashboard
+
+dashboard = PortfolioAnalyticsDashboard(
+    portfolio_manager=portfolio_manager,
+    risk_manager=risk_manager,
+    execution_engine=execution_engine
+)
+
+# Get comprehensive dashboard data
+dashboard_data = await dashboard.get_dashboard_data(['performance', 'risk', 'positions'])
+
+# Generate performance attribution
+attribution = await dashboard.get_attribution_analysis(start_date, end_date)
+
+# Export detailed report
+report = await dashboard.export_report('pdf', include_charts=True)
+```
 
 ## 📊 **Alternative Data Sources**
 
