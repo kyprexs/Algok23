@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/xwest/agloK23/mlruns/0/models/m-f6ddbcfb96444d95a4133fba37226a0f/artifacts
+creation_timestamp: 1756084087655
+experiment_id: '0'
+last_updated_timestamp: 1756084090700
+model_id: m-f6ddbcfb96444d95a4133fba37226a0f
+model_type: null
+name: model
+source_run_id: 2b7c70828ff643a69b7f7b39b152f2b0
+status: 2
+status_message: null

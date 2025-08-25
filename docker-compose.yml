@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # Redis for caching and feature store
+  redis:
+    image: redis:7-alpine
+    container_name: algok23_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - algok23
+
+  # PostgreSQL for relational data
+  postgres:
+    image: postgres:15
+    container_name: algok23_postgres
+    environment:
+      POSTGRES_DB: algok23
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - algok23
+
+  # TimescaleDB for time-series data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: algok23_timescaledb
+    environment:
+      POSTGRES_DB: algok23_timeseries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    networks:
+      - algok23
+
+  # Apache Kafka for message streaming
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: algok23_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - algok23
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: algok23_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - algok23
+
+  # MLflow for experiment tracking
+  mlflow:
+    image: python:3.11-slim
+    container_name: algok23_mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://postgres:password@postgres:5432/algok23
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: ./mlruns
+    volumes:
+      - mlflow_data:/mlruns
+    networks:
+      - algok23
+    command: >
+      sh -c "pip install mlflow psycopg2-binary &&
+             mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://postgres:password@postgres:5432/algok23"
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: algok23_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - algok23
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: algok23_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - algok23
+
+  # Jupyter for research and development
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: algok23_jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+      JUPYTER_TOKEN: "algok23"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - jupyter_data:/home/jovyan
+    networks:
+      - algok23
+
+volumes:
+  redis_data:
+  postgres_data:
+  timescale_data:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:
+  jupyter_data:
+
+networks:
+  algok23:
+    driver: bridge

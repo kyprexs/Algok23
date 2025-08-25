@@ -1,0 +1,23 @@
+artifact_path: file:///C:/Users/xwest/agloK23/mlruns/0/models/m-5e72083434b44e5abaebec6b8859f96e/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.11.9
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.5.1+cu121
+mlflow_version: 3.3.1
+model_id: m-5e72083434b44e5abaebec6b8859f96e
+model_size_bytes: 21331277
+model_uuid: m-5e72083434b44e5abaebec6b8859f96e
+prompts: null
+run_id: 2687640a69614872b844048c8949e553
+utc_time_created: '2025-08-25 00:00:11.071363'

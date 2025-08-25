@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/xwest/agloK23/mlruns/0/52b61b0874b746908f2c46ffe0ba5e9f/artifacts
+end_time: 1756080047369
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 52b61b0874b746908f2c46ffe0ba5e9f
+run_name: xgboost_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756080015815
+status: 3
+tags: []
+user_id: xwest

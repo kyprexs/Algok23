@@ -1,0 +1,209 @@
+version: '3.8'
+
+services:
+  # Main application
+  algok23-app:
+    build: .
+    container_name: algok23_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - TIMESCALE_HOST=timescaledb
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./models:/app/models
+    depends_on:
+      - redis
+      - postgres
+      - timescaledb
+      - kafka
+    networks:
+      - algok23
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+
+  # Redis for caching and feature store
+  redis:
+    image: redis:7-alpine
+    container_name: algok23_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 4gb --maxmemory-policy allkeys-lru --save 60 1000
+    volumes:
+      - redis_data:/data
+    networks:
+      - algok23
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 4G
+
+  # PostgreSQL for relational data
+  postgres:
+    image: postgres:15
+    container_name: algok23_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: algok23
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - algok23
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+
+  # TimescaleDB for time-series data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: algok23_timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: algok23_timeseries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    networks:
+      - algok23
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+
+  # Apache Kafka for message streaming
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: algok23_zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - algok23
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: algok23_kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - algok23
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+
+  # MLflow for experiment tracking
+  mlflow:
+    image: python:3.11-slim
+    container_name: algok23_mlflow
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/algok23
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: ./mlruns
+    volumes:
+      - mlflow_data:/mlruns
+    networks:
+      - algok23
+    depends_on:
+      - postgres
+    command: >
+      sh -c "pip install mlflow psycopg2-binary &&
+             mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/algok23"
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: algok23_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - algok23
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: algok23_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/:/etc/grafana/provisioning/
+    networks:
+      - algok23
+
+  # NGINX reverse proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: algok23_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - algok23-app
+      - grafana
+    networks:
+      - algok23
+
+volumes:
+  redis_data:
+  postgres_data:
+  timescale_data:
+  kafka_data:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  algok23:
+    driver: bridge

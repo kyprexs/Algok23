@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/xwest/agloK23/mlruns/0/35287a172e724e7eae2bd4022aab9ae6/artifacts
+end_time: 1756084100969
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 35287a172e724e7eae2bd4022aab9ae6
+run_name: transformer_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756084096279
+status: 3
+tags: []
+user_id: xwest

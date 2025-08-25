@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/xwest/agloK23/mlruns/0/4b3b652de8cb47ffbc22a3a7ec895478/artifacts
+end_time: 1756080015756
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 4b3b652de8cb47ffbc22a3a7ec895478
+run_name: ensemble_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756079391969
+status: 3
+tags: []
+user_id: xwest

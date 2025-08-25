@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/xwest/agloK23/mlruns/0/7a5afeb895a94b13b0587af9831aa8a8/artifacts
+end_time: 1756080052535
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 7a5afeb895a94b13b0587af9831aa8a8
+run_name: lightgbm_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756080047374
+status: 3
+tags: []
+user_id: xwest

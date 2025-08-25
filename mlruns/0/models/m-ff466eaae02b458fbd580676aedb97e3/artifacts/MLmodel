@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/xwest/agloK23/mlruns/0/models/m-ff466eaae02b458fbd580676aedb97e3/artifacts
+flavors:
+  python_function:
+    data: model.xgb
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.11.9
+  xgboost:
+    code: null
+    data: model.xgb
+    model_class: xgboost.sklearn.XGBClassifier
+    model_format: xgb
+    xgb_version: 3.0.4
+mlflow_version: 3.3.1
+model_id: m-ff466eaae02b458fbd580676aedb97e3
+model_size_bytes: 2090442
+model_uuid: m-ff466eaae02b458fbd580676aedb97e3
+prompts: null
+run_id: 8fb89fd2b0ee4d5182052d5ce5c2ac58
+utc_time_created: '2025-08-24 23:33:46.345644'

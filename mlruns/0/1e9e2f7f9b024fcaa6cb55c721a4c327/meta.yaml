@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/xwest/agloK23/mlruns/0/1e9e2f7f9b024fcaa6cb55c721a4c327/artifacts
+end_time: 1756078394389
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 1e9e2f7f9b024fcaa6cb55c721a4c327
+run_name: lstm_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756078388270
+status: 3
+tags: []
+user_id: xwest
