@@ -721,6 +721,197 @@ class AdvancedRiskManager:
         num_positions = len(self.positions)
         return math.sqrt(1 / num_positions)  # Simplified naive diversification
     
+    async def filter_signals(self, signals: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Dict[str, Any]]:
+        """Filter and validate trading signals through risk management."""
+        try:
+            filtered_signals = {}
+            
+            # If emergency stop or circuit breaker is active, block all signals
+            if self.emergency_stop_active or self.circuit_breaker_active:
+                logger.warning("All signals blocked due to risk management controls")
+                return {}
+            
+            for symbol, signal_list in signals.items():
+                if not signal_list:
+                    continue
+                
+                # Take the signal with highest confidence if multiple signals for same symbol
+                best_signal = max(signal_list, key=lambda s: s.get('confidence', 0))
+                
+                # Apply risk filters
+                if await self._validate_signal(symbol, best_signal):
+                    # Calculate risk-adjusted position size
+                    original_size = best_signal.get('size', 0.01)
+                    risk_adjusted_size = await self._calculate_risk_adjusted_size(
+                        symbol, original_size, best_signal
+                    )
+                    
+                    if risk_adjusted_size > 0:
+                        # Update signal with risk-adjusted parameters
+                        adjusted_signal = best_signal.copy()
+                        adjusted_signal['size'] = float(risk_adjusted_size)
+                        adjusted_signal['risk_adjusted'] = True
+                        
+                        filtered_signals[symbol] = adjusted_signal
+                        
+                        logger.debug(f"Signal approved for {symbol}: "
+                                   f"size={risk_adjusted_size:.4f} (original={original_size:.4f})")
+                    else:
+                        logger.info(f"Signal blocked for {symbol}: insufficient risk-adjusted size")
+                else:
+                    logger.info(f"Signal filtered out for {symbol} due to risk constraints")
+            
+            return filtered_signals
+            
+        except Exception as e:
+            logger.error(f"Error filtering signals: {e}")
+            return {}
+    
+    async def _validate_signal(self, symbol: str, signal: Dict[str, Any]) -> bool:
+        """Validate a trading signal against risk constraints."""
+        try:
+            # Check if we already have max positions
+            if len(self.positions) >= 50:  # Max portfolio positions
+                logger.debug(f"Signal rejected for {symbol}: maximum positions reached")
+                return False
+            
+            # Check position concentration
+            requested_size = signal.get('size', 0.01)
+            position_value = requested_size * float(self.portfolio_value)
+            
+            # Check if position size exceeds limit
+            max_position_value = float(self.portfolio_value) * self.risk_limits['max_position_size']
+            if position_value > max_position_value:
+                logger.debug(f"Signal rejected for {symbol}: position size too large "
+                           f"({position_value:.2f} > {max_position_value:.2f})")
+                return False
+            
+            # Check sector concentration if we can determine sector
+            sector = await self._get_asset_sector(symbol)
+            if sector != 'unknown':
+                sector_exposure = await self._calculate_sector_exposure(sector)
+                max_sector_exposure = self.risk_limits['max_sector_concentration']
+                
+                if sector_exposure + (position_value / float(self.portfolio_value)) > max_sector_exposure:
+                    logger.debug(f"Signal rejected for {symbol}: sector concentration too high")
+                    return False
+            
+            # Check volatility limits
+            asset_volatility = await self._get_asset_volatility(symbol)
+            if asset_volatility > self.risk_limits['volatility_threshold']:
+                logger.debug(f"Signal rejected for {symbol}: volatility too high ({asset_volatility:.2%})")
+                return False
+            
+            # Check correlation with existing positions
+            correlation_risk = await self._check_correlation_with_existing_positions(symbol)
+            if correlation_risk > self.risk_limits['correlation_threshold']:
+                logger.debug(f"Signal rejected for {symbol}: correlation risk too high")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating signal for {symbol}: {e}")
+            return False
+    
+    async def _calculate_risk_adjusted_size(self, symbol: str, original_size: float, 
+                                          signal: Dict[str, Any]) -> Decimal:
+        """Calculate risk-adjusted position size."""
+        try:
+            # Start with signal-suggested size
+            base_size = original_size
+            
+            # Get signal confidence (0.0 to 2.0+)
+            confidence = signal.get('confidence', 1.0)
+            
+            # Adjust size based on confidence
+            confidence_adjustment = min(confidence / 1.0, 1.5)  # Cap at 1.5x
+            adjusted_size = base_size * confidence_adjustment
+            
+            # Apply volatility-based position sizing
+            vol_adjusted_size = await self.calculate_position_size(
+                symbol=symbol,
+                signal_strength=adjusted_size,
+                target_volatility=0.15,  # 15% target volatility
+                max_position_pct=self.risk_limits['max_position_size']
+            )
+            
+            # Apply portfolio heat adjustment (reduce size if portfolio is stressed)
+            portfolio_heat = await self._calculate_portfolio_heat()
+            heat_adjustment = max(0.5, 1.0 - portfolio_heat)  # Reduce size if portfolio is hot
+            
+            final_size = vol_adjusted_size * Decimal(str(heat_adjustment))
+            
+            # Ensure minimum viable size
+            min_size = Decimal('0.001')  # 0.1% minimum
+            return max(final_size, min_size)
+            
+        except Exception as e:
+            logger.error(f"Error calculating risk-adjusted size for {symbol}: {e}")
+            return Decimal('0')
+    
+    async def _calculate_sector_exposure(self, sector: str) -> float:
+        """Calculate current exposure to a specific sector."""
+        sector_value = 0.0
+        
+        for symbol, position in self.positions.items():
+            position_sector = await self._get_asset_sector(symbol)
+            if position_sector == sector:
+                sector_value += abs(float(position.market_value))
+        
+        return sector_value / float(self.portfolio_value) if self.portfolio_value > 0 else 0.0
+    
+    async def _check_correlation_with_existing_positions(self, symbol: str) -> float:
+        """Check correlation of new symbol with existing positions."""
+        if not self.positions or symbol not in self.return_history:
+            return 0.0
+        
+        max_correlation = 0.0
+        
+        for existing_symbol in self.positions.keys():
+            if existing_symbol == symbol:
+                continue
+            
+            if (existing_symbol in self.return_history and 
+                len(self.return_history[symbol]) >= 30 and 
+                len(self.return_history[existing_symbol]) >= 30):
+                
+                # Calculate correlation between the two assets
+                returns1 = list(self.return_history[symbol])[-30:]
+                returns2 = list(self.return_history[existing_symbol])[-30:]
+                
+                correlation = np.corrcoef(returns1, returns2)[0, 1]
+                if not np.isnan(correlation):
+                    max_correlation = max(max_correlation, abs(correlation))
+        
+        return max_correlation
+    
+    async def _calculate_portfolio_heat(self) -> float:
+        """Calculate portfolio heat (stress level) to adjust position sizing."""
+        heat_factors = []
+        
+        # Drawdown factor
+        if self.max_drawdown > 0:
+            drawdown_heat = min(self.current_drawdown / self.max_drawdown, 1.0)
+            heat_factors.append(drawdown_heat * 0.3)  # 30% weight
+        
+        # Volatility factor
+        portfolio_returns = self._get_portfolio_returns()
+        if len(portfolio_returns) > 30:
+            recent_vol = np.std(portfolio_returns[-30:]) * math.sqrt(252)
+            long_term_vol = np.std(portfolio_returns) * math.sqrt(252)
+            vol_heat = max(0, (recent_vol - long_term_vol) / long_term_vol) if long_term_vol > 0 else 0
+            heat_factors.append(min(vol_heat, 0.5) * 0.3)  # 30% weight
+        
+        # VaR breach factor
+        current_var = await self.calculate_portfolio_var(0.95, 1)
+        var_limit = self.risk_limits['var_limit_95'] * float(self.portfolio_value)
+        if var_limit > 0:
+            var_heat = max(0, (current_var - var_limit) / var_limit)
+            heat_factors.append(min(var_heat, 0.5) * 0.4)  # 40% weight
+        
+        return sum(heat_factors)
+    
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """Get current portfolio status."""
         risk_metrics = await self.get_comprehensive_risk_report()

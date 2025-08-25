@@ -135,27 +135,239 @@ graph TB
 - **Equities**: Interactive Brokers, Polygon.io
 - **Alt Data**: Glassnode (on-chain), news sentiment APIs
 
-## 📈 Trading Strategies
+## 📈 **Strategy Framework**
 
-### 1. Momentum Breakout Detection
-- Multi-timeframe trend analysis (1m, 5m, 1h, 1d)
-- Volume-weighted momentum scoring
-- Dynamic stop-loss based on ATR volatility
+### **Strategy Architecture**
 
-### 2. Mean Reversion (Sideways Markets)
-- Bollinger Band squeeze detection
-- RSI divergence analysis
-- Mean reversion to VWAP
+AgloK23 features a comprehensive strategy framework that supports multiple concurrent trading strategies with sophisticated risk management and signal coordination.
 
-### 3. Statistical Arbitrage
-- Pairs trading: BTC/ETH, SPY/QQQ
-- Cointegration-based entry/exit signals
-- Risk-neutral portfolio construction
+```python
+# Example: Using the Strategy Framework
+from src.strategies import MomentumStrategy, MeanReversionStrategy, StrategyEngine
+from src.data_feeds import create_market_data_feed, DataSource
+from src.risk import RiskManager
 
-### 4. Cross-Asset Macro Strategies
-- VIX/DXY regime detection
-- Treasury yield curve analysis
-- Risk-on/risk-off asset rotation
+# Initialize strategies
+momentum_strategy = MomentumStrategy(
+    name="btc_momentum",
+    params={
+        'rsi_period': 14,
+        'volume_threshold': 1.5,
+        'position_size': 0.02
+    }
+)
+
+mean_revert_strategy = MeanReversionStrategy(
+    name="eth_mean_revert", 
+    params={
+        'z_score_threshold': 2.0,
+        'bollinger_period': 20,
+        'position_size': 0.015
+    }
+)
+
+# Create strategy engine
+engine = StrategyEngine(settings, model_manager, risk_manager, order_manager)
+
+# Add strategies
+await engine.add_strategy('momentum', name='btc_momentum')
+await engine.add_strategy('mean_reversion', name='eth_mean_revert')
+
+# Connect market data
+market_data = create_market_data_feed(DataSource.MOCK, {})
+await engine.start()
+```
+
+### **Available Strategies**
+
+#### **1. Momentum Breakout Strategy** ✅ **IMPLEMENTED**
+- **Core Logic**: RSI-based momentum detection with volume confirmation
+- **Key Features**:
+  - Multi-timeframe RSI analysis (14-period default)
+  - Volume threshold confirmation (1.5x average volume)
+  - ATR-based stop loss and take profit calculation
+  - Dynamic position sizing based on volatility
+- **Risk Controls**: 
+  - Maximum 2% position size per trade
+  - ATR-based stop losses
+  - Volume confirmation required
+- **Performance**: Optimized for trending markets and breakout scenarios
+
+#### **2. Mean Reversion Strategy** ✅ **IMPLEMENTED**
+- **Core Logic**: Statistical mean reversion using Z-scores and Bollinger Bands
+- **Key Features**:
+  - Z-score threshold detection (±2.0 standard deviations)
+  - Bollinger Band confirmation (2 std dev bands)
+  - Optional volume confirmation
+  - Percentage-based profit targets and stops
+- **Risk Controls**:
+  - Maximum 1.5% position size per trade
+  - 1% stop loss, 2% profit target
+  - Statistical significance requirements
+- **Performance**: Optimized for range-bound and sideways markets
+
+### **Strategy Engine Features**
+
+#### **Multi-Strategy Coordination**
+- **Concurrent Execution**: Run multiple strategies simultaneously
+- **Signal Aggregation**: Intelligent signal combining and conflict resolution
+- **Resource Sharing**: Efficient market data distribution to all strategies
+- **Dynamic Strategy Management**: Add/remove strategies during runtime
+
+#### **Risk Management Integration**
+- **Pre-Trade Filtering**: All signals pass through risk management filters
+- **Position Sizing**: Volatility-adjusted and risk-weighted position sizing
+- **Portfolio Limits**: Sector concentration and correlation limits
+- **Emergency Controls**: Circuit breakers and emergency stop functionality
+
+#### **Performance Monitoring**
+- **Real-Time Metrics**: Live strategy performance tracking
+- **Attribution Analysis**: Performance breakdown by strategy
+- **Signal Quality**: Hit rate and profit factor analysis
+- **Risk Attribution**: Strategy contribution to portfolio risk
+
+### **Backtesting System** ✅ **IMPLEMENTED**
+
+#### **Comprehensive Backtesting Engine**
+```python
+from src.backtesting import Backtester
+import pandas as pd
+from datetime import datetime, timedelta
+
+# Initialize backtester
+backtester = Backtester(initial_capital=100000, commission=0.001)
+
+# Load historical data
+historical_data = pd.DataFrame({
+    'timestamp': pd.date_range('2024-01-01', '2024-12-31', freq='1min'),
+    'symbol': 'BTCUSDT',
+    'price': np.random.randn(525600).cumsum() + 50000,
+    'volume': np.random.randint(1000, 10000, 525600)
+})
+
+# Run backtest
+strategy = MomentumStrategy()
+metrics = await backtester.run_backtest(
+    strategy=strategy,
+    market_data=historical_data,
+    start_date=datetime(2024, 1, 1),
+    end_date=datetime(2024, 12, 31)
+)
+
+# Analyze results
+print(f"Total Return: {metrics.total_return_pct:.2%}")
+print(f"Sharpe Ratio: {metrics.sharpe_ratio:.2f}")
+print(f"Max Drawdown: {metrics.max_drawdown_pct:.2%}")
+print(f"Win Rate: {metrics.win_rate:.2%}")
+```
+
+#### **Backtesting Capabilities**
+- **Realistic Simulation**: Commission costs, slippage, and market impact
+- **Position Management**: Automatic stop loss and take profit execution
+- **Performance Metrics**: 15+ comprehensive performance statistics
+- **Risk Analysis**: VaR, drawdown analysis, and risk-adjusted returns
+- **Trade Analysis**: Individual trade breakdown and statistics
+
+#### **Key Metrics Provided**
+- **Return Metrics**: Total return, annual return, monthly returns
+- **Risk Metrics**: Sharpe ratio, Sortino ratio, maximum drawdown
+- **Trade Metrics**: Win rate, average trade P&L, profit factor
+- **Advanced Metrics**: Consecutive wins/losses, trade duration analysis
+
+### **Market Data Integration** ✅ **IMPLEMENTED**
+
+#### **Multi-Source Data Feeds**
+```python
+from src.data_feeds import MarketDataManager, DataSource, DataType
+
+# Initialize data manager
+data_manager = MarketDataManager()
+
+# Add multiple data feeds
+mock_feed = create_market_data_feed(DataSource.MOCK, {})
+binance_feed = create_market_data_feed(DataSource.BINANCE, {'api_key': 'key'})
+
+# Add feeds to manager
+await data_manager.add_feed(mock_feed)
+await data_manager.add_feed(binance_feed)
+
+# Subscribe to symbols
+wait data_manager.subscribe_to_symbols(
+    symbols=['BTCUSDT', 'ETHUSDT', 'ADAUSDT'],
+    data_types=[DataType.TICKER, DataType.TRADES]
+)
+```
+
+#### **Supported Data Sources**
+- **Mock Data Feed**: Realistic simulation data for testing
+- **Binance**: Real-time crypto market data via WebSocket
+- **Extensible Architecture**: Easy integration of additional exchanges
+
+#### **Data Types Supported**
+- **Ticker Data**: Real-time price, volume, and change data
+- **Trade Data**: Individual trade execution data
+- **Candle Data**: OHLCV candle data at multiple timeframes
+- **Historical Data**: Backtesting data with flexible time ranges
+
+### **Strategy Development Guide**
+
+#### **Creating Custom Strategies**
+```python
+from src.strategies.base import BaseStrategy
+from typing import Dict, Any, Optional
+from datetime import datetime
+
+class MyCustomStrategy(BaseStrategy):
+    """Custom trading strategy implementation."""
+    
+    def __init__(self, name: str = "my_custom", params: Optional[Dict[str, Any]] = None):
+        default_params = {
+            'param1': 10,
+            'param2': 0.02,
+            'position_size': 0.01
+        }
+        if params:
+            default_params.update(params)
+        super().__init__(name, default_params)
+    
+    async def generate_signals(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate trading signals based on market data."""
+        if not self.running:
+            return {}
+        
+        signals = {}
+        for symbol, data in market_data.items():
+            # Your strategy logic here
+            if self._should_buy(symbol, data):
+                signals[symbol] = {
+                    'side': 'buy',
+                    'size': self.params['position_size'],
+                    'confidence': 1.0,
+                    'reason': 'Custom strategy buy signal'
+                }
+        
+        return signals
+    
+    def _should_buy(self, symbol: str, data: Dict[str, Any]) -> bool:
+        """Custom buy logic."""
+        # Implement your custom logic
+        return True
+```
+
+#### **Strategy Interface Requirements**
+- **Inherit from BaseStrategy**: Provides consistent lifecycle management
+- **Implement generate_signals()**: Core strategy logic for signal generation
+- **Return Signal Format**: Dictionary with side, size, confidence, and reason
+- **Handle State Management**: Track internal state for multi-bar strategies
+
+### **Future Strategy Implementations**
+
+#### **Planned Strategies** 🚧 **ROADMAP**
+- **Statistical Arbitrage**: Pairs trading with cointegration analysis
+- **Market Making**: Spread capture and inventory management
+- **Cross-Asset Momentum**: Multi-asset trend following
+- **Options Strategies**: Volatility trading and hedging
+- **Machine Learning Strategies**: Ensemble model-based signals
 
 ## 🔒 Risk Management Framework
 
@@ -514,10 +726,14 @@ AgloK23/
 - [x] Comprehensive test suite (44 tests)
 - [x] Alert and notification system
 
-### **Phase 4: Production & Strategy Framework** 🚧 **IN PROGRESS**
+### **Phase 4: Production & Strategy Framework** ✅ **MAJOR PROGRESS**
 - [x] Strategy framework foundation
+- [x] Concrete strategy implementations (Momentum, Mean Reversion)
+- [x] Strategy engine with multi-strategy support
+- [x] Advanced backtesting system with comprehensive metrics
+- [x] Risk management integration with signal filtering
+- [x] Market data feed interface (Mock, Binance, extensible)
 - [ ] Multi-strategy portfolio optimization
-- [ ] Advanced backtesting with walk-forward analysis
 - [ ] Web-based monitoring dashboard
 - [ ] Production deployment automation
 
